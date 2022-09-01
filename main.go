@@ -2,12 +2,14 @@ package main
 
 import (
 	"log"
-	"reflect"
+	"smartcrud/model"
+	"smartcrud/smartcrud"
 )
 
 func main() {
-	var test interface{}
-	test = 1
-	t := reflect.TypeOf(test)
-	log.Println(t.Kind().String())
+	g := smartcrud.InitGen("/Users/leonscript/GolandProjects/smartcrud/test", "model", model.User{})
+	err := g.GenerateCRUD()
+	if err != nil {
+		log.Println(err)
+	}
 }

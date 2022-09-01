@@ -10,7 +10,6 @@ import (
 
 // sgen 自动化生成器
 type sgen struct {
-	genConfig
 }
 
 type model struct {
@@ -23,20 +22,21 @@ func (s *sgen) GenerateCRUD(config genConfig) error {
 	models := s.analyseModel(config.srcModel)
 	// 循环生成代码
 	for _, m := range models {
-		s.generate(s.dstPath, s.srcPackage, m)
+		if err := s.generate(config.dstPath, config.srcPackage, m); err != nil {
+			return err
+		}
 	}
 
-	//f := gg.NewGroup()
 	return nil
 }
 
 // analyseModel 反射分析代码
-func (s *sgen) analyseModel(srts ...interface{}) (models []model) {
+func (s *sgen) analyseModel(srts interface{}) (models []model) {
 	var (
 		t reflect.Type
 	)
 
-	for _, srt := range srts {
+	for _, srt := range srts.([]interface{}) {
 		t = reflect.TypeOf(srt)
 		models = append(models, model{name: t.Name()})
 	}
@@ -62,18 +62,49 @@ func (s *sgen) generate(dstPath, srcPackage string, model model) (err error) {
 	group.NewStruct(model.name+"Repository").AddField("db", "*gorm.DB")
 
 	// method
+	// insert
 	group.NewFunction("Insert"+model.name).
 		WithReceiver("r", "*"+model.name+"Repository").
 		AddParameter("param", srcPackage+"."+model.name).
+		AddResult("", "error").
+		AddBody(gg.String(`return r.db.Create(&param).Error`))
+
+	// Delete
+	group.NewFunction("Delete"+model.name).
+		WithReceiver("r", "*"+model.name+"Repository").
+		AddParameter("param", srcPackage+"."+model.name).
+		AddResult("", "error").
+		AddBody(gg.String(`return r.db.Delete(&param).Error`))
+
+	// Update
+	group.NewFunction("Update"+model.name).
+		WithReceiver("r", "*"+model.name+"Repository").
+		AddParameter("param", srcPackage+"."+model.name).
+		AddResult("", "error").
+		AddBody(gg.String(`return r.db.model(&` + srcPackage + "." + model.name + `).Updates(param).Error`))
+
+	// Get
+	group.NewFunction("Get"+model.name).
+		WithReceiver("r", "*"+model.name+"Repository").
+		AddResult("param", srcPackage+"."+model.name).
 		AddResult("err", "error").
-		AddBody(gg.String(`return err = r.db.Create(&param).Error`))
+		AddBody(gg.String(`err = r.db.Take(&param).Error
+								   return`))
+
+	// Query
+	group.NewFunction("Query"+model.name).
+		WithReceiver("r", "*"+model.name+"Repository").
+		AddResult("params", "[]"+srcPackage+"."+model.name).
+		AddResult("err", "error").
+		AddBody(gg.String(`err = r.db.Find(&params).Error
+								   return`))
 
 	log.Println(group.String())
 
 	// create file
-	f, err := os.OpenFile(dstPath+"/"+model.name+".go", os.O_WRONLY|os.O_TRUNC, 0600)
+	f, err := os.Create(dstPath + "/" + strings.ToLower(model.name) + ".go")
 	if err != nil {
-
+		return
 	}
 	_, err = f.WriteString(group.String())
 	return
