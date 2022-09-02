@@ -81,7 +81,7 @@ func (s *sgen) generate(dstPath, srcPackage string, model model) (err error) {
 		WithReceiver("r", "*"+model.name+"Repository").
 		AddParameter("param", srcPackage+"."+model.name).
 		AddResult("", "error").
-		AddBody(gg.String(`return r.db.model(&` + srcPackage + "." + model.name + `).Updates(param).Error`))
+		AddBody(gg.String(`return r.db.Model(&` + srcPackage + "." + model.name + `{}).Updates(param).Error`))
 
 	// Get
 	group.NewFunction("Get"+model.name).
@@ -97,7 +97,7 @@ func (s *sgen) generate(dstPath, srcPackage string, model model) (err error) {
 		AddResult("params", "[]"+srcPackage+"."+model.name).
 		AddResult("err", "error").
 		AddBody(gg.String(`err = r.db.Find(&params).Error
-								   return`))
+								   return params,err`))
 
 	log.Println(group.String())
 
