@@ -5,7 +5,8 @@
 
 ## Installation
 ```
-go get 
+$ go get github.com/LeonScript17/smartcrud
+
 ```
 
 ## Example
