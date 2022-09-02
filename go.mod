@@ -1,4 +1,4 @@
-module smartcrud
+module github.com/LeonScript17/smartcrud
 
 go 1.19
 
